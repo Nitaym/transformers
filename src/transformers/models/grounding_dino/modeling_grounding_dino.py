@@ -2776,7 +2776,7 @@ class GroundingDinoLoss(nn.Module):
 
         target_classes_onehot = target_classes_onehot[:, :, :-1]
         loss_ce = (
-            sigmoid_focal_loss(source_logits, target_classes_onehot, num_boxes, alpha=self.focal_alpha, gamma=2)
+            sigmoid_focal_loss(torch.clamp(source_logits, min=-50, max=50), target_classes_onehot, num_boxes, alpha=self.focal_alpha, gamma=2)
             * source_logits.shape[1]
         )
         losses = {"loss_ce": loss_ce}
