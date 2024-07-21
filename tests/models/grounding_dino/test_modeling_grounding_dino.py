@@ -38,9 +38,9 @@ from transformers.testing_utils import (
     torch_device,
 )
 
-from ...test_configuration_common import ConfigTester
-from ...test_modeling_common import ModelTesterMixin, _config_zero_init, floats_tensor
-from ...test_pipeline_mixin import PipelineTesterMixin
+from tests.test_configuration_common import ConfigTester
+from tests.test_modeling_common import ModelTesterMixin, _config_zero_init, floats_tensor
+from tests.test_pipeline_mixin import PipelineTesterMixin
 
 
 if is_torch_available():
@@ -779,15 +779,34 @@ class GroundingDinoModelIntegrationTests(unittest.TestCase):
         # For some reason 12 elements are > 1e-3, but the rest are fine
         self.assertTrue(torch.allclose(outputs2.logits, outputs_batched.logits[1:], atol=1.8e-3))
 
+    def draw_bboxes(self, images, annotations):
+        # Draw using opencv and save the images
+        import cv2
+        import numpy as np
+
+        for i, (image, annotation) in enumerate(zip(images, annotations)):
+            image = np.array(image)
+            for bbox in annotation['annotations']:
+                bbox = bbox['bbox']
+                x1, y1, x2, y2 = bbox[0], bbox[1], bbox[2], bbox[3]
+                cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.imwrite(f"image_{i}.png", image)
+
     def test_grounding_dino_loss(self):
         ds = load_dataset("EduardoPacheco/aquarium-sample", split="train")
+        # self.draw_bboxes(ds["image"], ds["annotations"])
+        # exit(-1)
+
         image_processor = self.default_processor.image_processor
         tokenizer = self.default_processor.tokenizer
         id2label = {0: "fish", 1: "jellyfish", 2: "penguins", 3: "sharks", 4: "puffins", 5: "stingrays", 6: "starfish"}
         prompt = ". ".join(id2label.values()) + "."
 
         text_inputs = tokenizer([prompt, prompt], return_tensors="pt")
-        image_inputs = image_processor(images=ds["image"], annotations=ds["annotations"], return_tensors="pt")
+        image_inputs = image_processor(
+            images=ds["image"], 
+            annotations=ds["annotations"], 
+            return_tensors="pt")
 
         # Passing class_reduction="sum" and auxiliary_loss=True to compare with the expected loss
         model = GroundingDinoForObjectDetection.from_pretrained(
@@ -828,3 +847,16 @@ class GroundingDinoModelIntegrationTests(unittest.TestCase):
             self.assertTrue(torch.allclose(outputs.loss_dict[key], expected_loss_dict[key], atol=1e-3))
 
         self.assertTrue(torch.allclose(outputs.loss, expected_loss, atol=1e-3))
+
+
+if __name__ == "__main__":
+    import pytest
+    from pathlib import Path
+    import os
+    root = Path(os.getcwd())
+    filename = Path(__file__).resolve()
+    # filename = filename.relative_to(root)
+    # filename = f'{Path(filename).parent / Path(filename).stem}'#.GroundingDinoModelIntegrationTests.test_grounding_dino_loss'
+    arguments = ['-v', filename, '-k', 'test_grounding_dino_loss']
+    print(arguments)
+    pytest.main(arguments)
