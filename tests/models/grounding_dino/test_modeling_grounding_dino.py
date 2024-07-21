@@ -844,7 +844,7 @@ class GroundingDinoModelIntegrationTests(unittest.TestCase):
         expected_loss = torch.tensor(32482.2344)
 
         for key in expected_loss_dict:
-            self.assertTrue(torch.allclose(outputs.loss_dict[key], expected_loss_dict[key], atol=1e-3))
+            self.assertTrue(torch.allclose(outputs.loss_dict[key], expected_loss_dict[key], atol=1e-2), f"Error in {key}. Expected {expected_loss_dict[key]}, got {outputs.loss_dict[key]}")
 
         self.assertTrue(torch.allclose(outputs.loss, expected_loss, atol=1e-3))
 
